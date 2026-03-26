@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0f0f13;
+  --foreground: #e2e2e8;
+  --card: #1a1a24;
+  --card-border: #2a2a38;
+  --accent: #6366f1;
+  --positive: #22c55e;
+  --negative: #ef4444;
+  --muted: #71717a;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}

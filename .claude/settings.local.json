@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:api.deadlock-api.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:data.deadlock-api.com)",
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:dev.overwolf.com)",
+      "WebFetch(domain:steamcommunity.com)",
+      "WebFetch(domain:deadlock-api.com)",
+      "WebFetch(domain:assets.deadlock-api.com)",
+      "Bash(git init:*)",
+      "Bash(go mod init:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(go get:*)",
+      "Bash(go mod tidy:*)",
+      "Bash(go build:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npm install:*)",
+      "Bash(npx next build:*)",
+      "Bash(brew install:*)",
+      "Bash(export PATH=\"/opt/homebrew/opt/node@20/bin:$PATH\")",
+      "Bash(node:*)",
+      "Bash(chmod:*)",
+      "Bash(go vet:*)",
+      "Bash(sqlite3:*)"
+    ]
+  }
+}

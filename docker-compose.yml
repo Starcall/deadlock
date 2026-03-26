@@ -1,0 +1,56 @@
+services:
+  backend:
+    build:
+      context: .
+      target: backend
+    ports:
+      - "8080:8080"
+    volumes:
+      - db-data:/data
+    environment:
+      - DB_PATH=/data/deadlock.db
+      - SERVER_PORT=8080
+      - FRONTEND_URL=${PUBLIC_FRONTEND_URL:-http://localhost:3000}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      target: frontend
+      args:
+        # Set at build time — browser calls this URL directly
+        - NEXT_PUBLIC_API_URL=${PUBLIC_API_URL:-http://localhost:8080}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # Ingests 1000 matches + recomputes WPA every 15 minutes
+  cron:
+    build:
+      context: .
+      target: backend
+    volumes:
+      - db-data:/data
+    environment:
+      - DB_PATH=/data/deadlock.db
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Starting initial ingest..."
+        /bin/ingest --db /data/deadlock.db --count 1000 --patch-days 14
+        /bin/compute --db /data/deadlock.db --patch-days 14
+        echo "Initial run complete. Starting cron loop..."
+        while true; do
+          sleep 900
+          echo "$(date) — Running ingest..."
+          /bin/ingest --db /data/deadlock.db --count 1000 --patch-days 14
+          echo "$(date) — Running compute..."
+          /bin/compute --db /data/deadlock.db --patch-days 14
+          echo "$(date) — Cycle complete."
+        done
+    restart: unless-stopped
+
+volumes:
+  db-data:

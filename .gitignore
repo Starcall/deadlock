@@ -1,0 +1,41 @@
+# Environment
+.env
+*.env.local
+
+# Go
+/deadlock
+/bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+vendor/
+
+# Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Node / Next.js
+web/node_modules/
+web/.next/
+web/out/
+web/.env*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+dist/
