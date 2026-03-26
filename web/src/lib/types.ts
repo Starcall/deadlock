@@ -24,6 +24,7 @@ export interface WPAResult {
   win_rate: number;
   sample_size: number;
   std_delta_w: number;
+  p_value: number;
 }
 
 export interface ModelStats {

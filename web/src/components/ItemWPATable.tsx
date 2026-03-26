@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { WPAResult, Item } from "@/lib/types";
 
-type SortField = "delta_w" | "initial_w" | "win_rate" | "sample_size";
+type SortField = "delta_w" | "initial_w" | "win_rate" | "sample_size" | "p_value";
 
 interface Props {
   results: WPAResult[];
@@ -41,6 +41,10 @@ export default function ItemWPATable({ results, itemMap }: Props) {
       case "sample_size":
         va = a.sample_size;
         vb = b.sample_size;
+        break;
+      case "p_value":
+        va = a.p_value;
+        vb = b.p_value;
         break;
     }
     return sortAsc ? va - vb : vb - va;
@@ -80,6 +84,12 @@ export default function ItemWPATable({ results, itemMap }: Props) {
               onClick={() => handleSort("sample_size")}
             >
               K{arrow("sample_size")}
+            </th>
+            <th
+              className="py-2 px-3 cursor-pointer hover:text-[var(--foreground)]"
+              onClick={() => handleSort("p_value")}
+            >
+              P{arrow("p_value")}
             </th>
           </tr>
         </thead>
@@ -131,6 +141,13 @@ export default function ItemWPATable({ results, itemMap }: Props) {
                 </td>
                 <td className="py-2 px-3 font-mono text-[var(--muted)]">
                   {r.sample_size.toLocaleString()}
+                </td>
+                <td className={`py-2 px-3 font-mono text-xs ${
+                  r.p_value < 0.01 ? "text-[var(--positive)]" :
+                  r.p_value < 0.05 ? "text-yellow-400" :
+                  "text-[var(--muted)]"
+                }`}>
+                  {r.p_value < 0.001 ? "<.001" : r.p_value.toFixed(3)}
                 </td>
               </tr>
             );

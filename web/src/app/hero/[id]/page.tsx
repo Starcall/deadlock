@@ -113,6 +113,9 @@ export default function HeroDashboard() {
               <p>
                 <strong>K</strong> = Sample size (number of observed purchases).
               </p>
+              <p>
+                <strong>P</strong> = P-value (t-test, H₀: ΔW̄ = 0). Green = p &lt; 0.01, Yellow = p &lt; 0.05, Gray = not significant.
+              </p>
             </div>
             <ItemWPATable results={results} itemMap={itemMap} />
           </section>
