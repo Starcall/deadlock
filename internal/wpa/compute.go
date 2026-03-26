@@ -60,8 +60,9 @@ func ComputeMatchWPA(
 			continue
 		}
 
-		// Build game state AFTER purchase (use next snapshot time)
-		afterTime := min(item.GameTimeS+30, match.DurationS)
+		// Build game state AFTER purchase — use +200s to capture the next
+		// snapshot (snapshots arrive every 180-300s)
+		afterTime := min(item.GameTimeS+200, match.DurationS)
 		stateAfter := model.BuildGameState(snapsBySlot, players, afterTime, match.DurationS, avgBadge)
 		if stateAfter == nil {
 			continue
