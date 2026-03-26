@@ -48,7 +48,7 @@ func (db *DB) GetWPAForHero(ctx context.Context, heroID int, contextKey string, 
 		FROM wpa_item_results WHERE hero_id = ? AND sample_size >= ?`
 	args := []any{heroID, minSampleSize}
 
-	if contextKey != "" && contextKey != "all" {
+	if contextKey != "" {
 		query += " AND context_key = ?"
 		args = append(args, contextKey)
 	}

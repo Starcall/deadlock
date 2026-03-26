@@ -96,10 +96,19 @@ func discoverMatches(ctx context.Context, client *deadlockapi.Client, db *store.
 		return nil, err
 	}
 
+	// Start from a recent window and expand backwards if needed.
+	// The API returns ~1000 matches per page sorted by match_id ascending,
+	// so starting from patchCutoff (14 days ago) would take hundreds of pages
+	// to reach today. Instead, start from a few hours ago.
+	windowStart := time.Now().Add(-6 * time.Hour).Unix()
+	if windowStart < patchCutoff {
+		windowStart = patchCutoff
+	}
+
 	for len(allIDs) < target {
 		q := deadlockapi.MatchQuery{
 			MinDurationS: minDuration,
-			MinUnixTime:  patchCutoff,
+			MinUnixTime:  windowStart,
 		}
 		if maxID > 0 {
 			q.MinMatchID = maxID + 1
@@ -111,7 +120,18 @@ func discoverMatches(ctx context.Context, client *deadlockapi.Client, db *store.
 		}
 
 		if len(metas) == 0 {
-			break
+			// No more matches in this window — expand backwards
+			newStart := windowStart - 6*3600 // 6 more hours back
+			if newStart < patchCutoff {
+				newStart = patchCutoff
+			}
+			if newStart == windowStart {
+				break // Already at patch cutoff, no more matches
+			}
+			windowStart = newStart
+			maxID = 0 // Reset pagination for new window
+			log.Printf("  Expanding window to %s...", time.Unix(windowStart, 0).Format("2006-01-02 15:04"))
+			continue
 		}
 
 		ids := deadlockapi.ParseBulkMatchIDs(metas, minDuration)
@@ -139,7 +159,18 @@ func discoverMatches(ctx context.Context, client *deadlockapi.Client, db *store.
 			}
 		}
 		if maxInBatch <= maxID {
-			break // No progress
+			// No progress in current window — expand backwards
+			newStart := windowStart - 6*3600
+			if newStart < patchCutoff {
+				newStart = patchCutoff
+			}
+			if newStart == windowStart {
+				break
+			}
+			windowStart = newStart
+			maxID = 0
+			log.Printf("  Expanding window to %s...", time.Unix(windowStart, 0).Format("2006-01-02 15:04"))
+			continue
 		}
 		maxID = maxInBatch
 

@@ -8,83 +8,56 @@ type ContextDef struct {
 	PhaseFilter func(gameTimeS int) bool
 }
 
-// AllContexts returns the standard set of WPA contexts.
+type rankDef struct {
+	key         string
+	description string
+	filter      func(float64) bool
+}
+
+type timeDef struct {
+	key         string
+	description string
+	filter      func(int) bool
+}
+
+var ranks = []rankDef{
+	{"all", "All Ranks", func(float64) bool { return true }},
+	{"rank:low", "Low Rank (0-30)", func(b float64) bool { return b <= 30 }},
+	{"rank:mid", "Mid Rank (31-70)", func(b float64) bool { return b > 30 && b <= 70 }},
+	{"rank:high", "High Rank (71+)", func(b float64) bool { return b > 70 }},
+}
+
+var times = []timeDef{
+	{"all", "All Time", func(int) bool { return true }},
+	{"before:5m", "Before 5 min", func(t int) bool { return t <= 300 }},
+	{"before:8m", "Before 8 min", func(t int) bool { return t <= 480 }},
+	{"before:10m", "Before 10 min", func(t int) bool { return t <= 600 }},
+	{"before:15m", "Before 15 min", func(t int) bool { return t <= 900 }},
+	{"before:20m", "Before 20 min", func(t int) bool { return t <= 1200 }},
+	{"phase:early", "Early (0-10m)", func(t int) bool { return t <= 600 }},
+	{"phase:mid", "Mid (10-25m)", func(t int) bool { return t > 600 && t <= 1500 }},
+	{"phase:late", "Late (25m+)", func(t int) bool { return t > 1500 }},
+}
+
+// AllContexts returns all rank x time context combinations.
 func AllContexts() []ContextDef {
-	return []ContextDef{
-		{
-			Key:         "all",
-			Description: "All matches",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(int) bool { return true },
-		},
-		// Rank brackets (badge ranges)
-		{
-			Key:         "rank:low",
-			Description: "Low rank (badge 0-30)",
-			MatchFilter: func(b float64) bool { return b <= 30 },
-			PhaseFilter: func(int) bool { return true },
-		},
-		{
-			Key:         "rank:mid",
-			Description: "Mid rank (badge 31-70)",
-			MatchFilter: func(b float64) bool { return b > 30 && b <= 70 },
-			PhaseFilter: func(int) bool { return true },
-		},
-		{
-			Key:         "rank:high",
-			Description: "High rank (badge 71+)",
-			MatchFilter: func(b float64) bool { return b > 70 },
-			PhaseFilter: func(int) bool { return true },
-		},
-		// Game phases
-		{
-			Key:         "phase:early",
-			Description: "Early game (0-10 min)",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(t int) bool { return t <= 600 },
-		},
-		{
-			Key:         "phase:mid",
-			Description: "Mid game (10-25 min)",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(t int) bool { return t > 600 && t <= 1500 },
-		},
-		{
-			Key:         "phase:late",
-			Description: "Late game (25+ min)",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(t int) bool { return t > 1500 },
-		},
-		// Cumulative time filters (items bought before minute X)
-		{
-			Key:         "before:5m",
-			Description: "Items bought before 5 min",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(t int) bool { return t <= 300 },
-		},
-		{
-			Key:         "before:8m",
-			Description: "Items bought before 8 min",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(t int) bool { return t <= 480 },
-		},
-		{
-			Key:         "before:10m",
-			Description: "Items bought before 10 min",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(t int) bool { return t <= 600 },
-		},
-		{
-			Key:         "before:15m",
-			Description: "Items bought before 15 min",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(t int) bool { return t <= 900 },
-		},
-		{
-			Key:         "before:20m",
-			Description: "Items bought before 20 min",
-			MatchFilter: func(float64) bool { return true },
-			PhaseFilter: func(t int) bool { return t <= 1200 },
-		},
+	var out []ContextDef
+	for _, r := range ranks {
+		for _, t := range times {
+			key := r.key + "|" + t.key
+			desc := r.description + " / " + t.description
+
+			// Capture loop vars
+			rf := r.filter
+			tf := t.filter
+
+			out = append(out, ContextDef{
+				Key:         key,
+				Description: desc,
+				MatchFilter: rf,
+				PhaseFilter: tf,
+			})
+		}
 	}
+	return out
 }

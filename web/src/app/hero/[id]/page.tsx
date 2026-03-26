@@ -15,7 +15,8 @@ export default function HeroDashboard() {
   const [hero, setHero] = useState<Hero | null>(null);
   const [results, setResults] = useState<WPAResult[]>([]);
   const [itemMap, setItemMap] = useState<Record<number, Item>>({});
-  const [context, setContext] = useState("all");
+  const [rank, setRank] = useState("all");
+  const [time, setTime] = useState("all");
   const [minSampleSize, setMinSampleSize] = useState(30);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -25,7 +26,7 @@ export default function HeroDashboard() {
     setError(null);
     try {
       const [wpa, items, heroes] = await Promise.all([
-        getHeroWPA(heroId, context, minSampleSize),
+        getHeroWPA(heroId, rank, time, minSampleSize),
         getItems(),
         getHeroes(),
       ]);
@@ -41,7 +42,7 @@ export default function HeroDashboard() {
     } finally {
       setLoading(false);
     }
-  }, [heroId, context, minSampleSize]);
+  }, [heroId, rank, time, minSampleSize]);
 
   useEffect(() => {
     fetchData();
@@ -69,8 +70,10 @@ export default function HeroDashboard() {
         </div>
 
         <ContextFilters
-          context={context}
-          onContextChange={setContext}
+          rank={rank}
+          onRankChange={setRank}
+          time={time}
+          onTimeChange={setTime}
           minSampleSize={minSampleSize}
           onMinSampleSizeChange={setMinSampleSize}
         />

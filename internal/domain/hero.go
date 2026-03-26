@@ -8,7 +8,7 @@ type Hero struct {
 	PlayerSelectable bool   `json:"player_selectable"`
 	Disabled         bool   `json:"disabled"`
 	InDevelopment    bool   `json:"in_development"`
-	ImageURL         string `json:"-"` // Extracted from images.icon_image_small_webp
+	ImageURL         string `json:"image_url,omitempty"`
 }
 
 // HeroImages is the nested images object in the heroes API response.

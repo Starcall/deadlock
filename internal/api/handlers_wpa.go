@@ -15,10 +15,15 @@ func (s *Server) handleGetHeroWPA(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	contextKey := r.URL.Query().Get("context")
-	if contextKey == "" {
-		contextKey = "all"
+	rankKey := r.URL.Query().Get("rank")
+	if rankKey == "" {
+		rankKey = "all"
 	}
+	timeKey := r.URL.Query().Get("time")
+	if timeKey == "" {
+		timeKey = "all"
+	}
+	contextKey := rankKey + "|" + timeKey
 
 	minSampleSize := 30
 	if v := r.URL.Query().Get("min_sample_size"); v != "" {

@@ -1,60 +1,69 @@
 "use client";
 
 interface Props {
-  context: string;
-  onContextChange: (ctx: string) => void;
+  rank: string;
+  onRankChange: (rank: string) => void;
+  time: string;
+  onTimeChange: (time: string) => void;
   minSampleSize: number;
   onMinSampleSizeChange: (n: number) => void;
 }
 
-const RANK_CONTEXTS = [
+const RANKS = [
   { key: "all", label: "All Ranks" },
-  { key: "rank:low", label: "Low Rank" },
-  { key: "rank:mid", label: "Mid Rank" },
-  { key: "rank:high", label: "High Rank" },
+  { key: "rank:low", label: "Low" },
+  { key: "rank:mid", label: "Mid" },
+  { key: "rank:high", label: "High" },
 ];
 
-const TIME_CONTEXTS = [
-  { key: "before:5m", label: "< 5 min" },
-  { key: "before:8m", label: "< 8 min" },
-  { key: "before:10m", label: "< 10 min" },
-  { key: "before:15m", label: "< 15 min" },
-  { key: "before:20m", label: "< 20 min" },
-  { key: "phase:early", label: "Early (0-10m)" },
-  { key: "phase:mid", label: "Mid (10-25m)" },
-  { key: "phase:late", label: "Late (25m+)" },
+const TIMES = [
+  { key: "all", label: "All Time" },
+  { key: "before:5m", label: "< 5m" },
+  { key: "before:8m", label: "< 8m" },
+  { key: "before:10m", label: "< 10m" },
+  { key: "before:15m", label: "< 15m" },
+  { key: "before:20m", label: "< 20m" },
+  { key: "phase:early", label: "Early" },
+  { key: "phase:mid", label: "Mid" },
+  { key: "phase:late", label: "Late" },
 ];
 
 export default function ContextFilters({
-  context,
-  onContextChange,
+  rank,
+  onRankChange,
+  time,
+  onTimeChange,
   minSampleSize,
   onMinSampleSizeChange,
 }: Props) {
-  const renderButtons = (items: { key: string; label: string }[]) =>
-    items.map((c) => (
-      <button
-        key={c.key}
-        onClick={() => onContextChange(c.key)}
-        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${
-          context === c.key
-            ? "bg-[var(--accent)] border-[var(--accent)] text-white"
-            : "bg-[var(--card)] border-[var(--card-border)] text-[var(--muted)] hover:border-[var(--accent)]"
-        }`}
-      >
-        {c.label}
-      </button>
-    ));
+  const btn = (active: boolean) =>
+    `px-3 py-1.5 text-xs rounded-full border transition-colors ${
+      active
+        ? "bg-[var(--accent)] border-[var(--accent)] text-white"
+        : "bg-[var(--card)] border-[var(--card-border)] text-[var(--muted)] hover:border-[var(--accent)]"
+    }`;
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-4">
         <span className="text-xs text-[var(--muted)] w-12">Rank</span>
-        <div className="flex flex-wrap gap-2">{renderButtons(RANK_CONTEXTS)}</div>
+        <div className="flex flex-wrap gap-2">
+          {RANKS.map((r) => (
+            <button key={r.key} onClick={() => onRankChange(r.key)} className={btn(rank === r.key)}>
+              {r.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <span className="text-xs text-[var(--muted)] w-12">Time</span>
-        <div className="flex flex-wrap gap-2">{renderButtons(TIME_CONTEXTS)}</div>
+        <div className="flex flex-wrap gap-2">
+          {TIMES.map((t) => (
+            <button key={t.key} onClick={() => onTimeChange(t.key)} className={btn(time === t.key)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
         <label>Min samples:</label>

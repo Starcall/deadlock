@@ -20,11 +20,12 @@ export async function getItems(): Promise<Item[]> {
 
 export async function getHeroWPA(
   heroId: number,
-  context: string = "all",
+  rank: string = "all",
+  time: string = "all",
   minSampleSize: number = 30
 ): Promise<WPAResult[]> {
   return fetchJSON<WPAResult[]>(
-    `/api/wpa/hero/${heroId}?context=${context}&min_sample_size=${minSampleSize}`
+    `/api/wpa/hero/${heroId}?rank=${rank}&time=${time}&min_sample_size=${minSampleSize}`
   );
 }
 
