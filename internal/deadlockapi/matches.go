@@ -3,6 +3,7 @@ package deadlockapi
 import (
 	"context"
 	"fmt"
+	"encoding/json"
 	"net/url"
 	"strconv"
 	"strings"
@@ -63,9 +64,17 @@ func (c *Client) FetchMatchMetadata(ctx context.Context, q MatchQuery) ([]MatchM
 
 	u.RawQuery = params.Encode()
 
-	var result []MatchMetadataBulk
-	if err := c.getJSON(ctx, u.String(), &result); err != nil {
+	body, err := c.get(ctx, u.String())
+	if err != nil {
+		// 404 means no matches found — return empty, not error
+		if strings.Contains(err.Error(), "API returned 404") {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("fetching match metadata: %w", err)
+	}
+	var result []MatchMetadataBulk
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("unmarshalling match metadata: %w", err)
 	}
 	return result, nil
 }
