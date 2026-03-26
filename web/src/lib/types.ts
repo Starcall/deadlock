@@ -25,6 +25,8 @@ export interface WPAResult {
   sample_size: number;
   std_delta_w: number;
   p_value: number;
+  ci95_lower: number;
+  ci95_upper: number;
 }
 
 export interface ModelStats {

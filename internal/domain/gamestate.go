@@ -39,15 +39,25 @@ type WPAResult struct {
 	SampleSize   int     `json:"sample_size"`
 	StdDeltaW    float64 `json:"std_delta_w"`
 	PValue       float64 `json:"p_value"`
+	CI95Lower    float64 `json:"ci95_lower"`
+	CI95Upper    float64 `json:"ci95_upper"`
 }
 
-// ComputePValue sets the two-tailed p-value for H0: mean ΔW = 0.
-func (r *WPAResult) ComputePValue() {
+// ComputeDerivedStats sets p-value and 95% confidence interval from stored stats.
+func (r *WPAResult) ComputeDerivedStats() {
 	if r.SampleSize < 2 || r.StdDeltaW == 0 {
 		r.PValue = 1.0
+		r.CI95Lower = r.MeanDeltaW
+		r.CI95Upper = r.MeanDeltaW
 		return
 	}
 	se := r.StdDeltaW / math.Sqrt(float64(r.SampleSize))
+
+	// 95% CI: mean ± 1.96 * SE
+	r.CI95Lower = r.MeanDeltaW - 1.96*se
+	r.CI95Upper = r.MeanDeltaW + 1.96*se
+
+	// P-value
 	t := math.Abs(r.MeanDeltaW / se)
 	r.PValue = 2 * normalSurvival(t)
 }

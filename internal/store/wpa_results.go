@@ -67,7 +67,7 @@ func (db *DB) GetWPAForHero(ctx context.Context, heroID int, contextKey string, 
 		if err := rows.Scan(&r.HeroID, &r.ItemID, &r.ContextKey, &r.MeanDeltaW, &r.MeanInitialW, &r.WinRate, &r.SampleSize, &r.StdDeltaW); err != nil {
 			return nil, fmt.Errorf("scanning WPA result: %w", err)
 		}
-		r.ComputePValue()
+		r.ComputeDerivedStats()
 		results = append(results, r)
 	}
 	return results, rows.Err()
@@ -91,7 +91,7 @@ func (db *DB) GetWPAForHeroItem(ctx context.Context, heroID int, itemID int64) (
 		if err := rows.Scan(&r.HeroID, &r.ItemID, &r.ContextKey, &r.MeanDeltaW, &r.MeanInitialW, &r.WinRate, &r.SampleSize, &r.StdDeltaW); err != nil {
 			return nil, fmt.Errorf("scanning WPA result: %w", err)
 		}
-		r.ComputePValue()
+		r.ComputeDerivedStats()
 		results2 = append(results2, r)
 	}
 	return results2, rows.Err()

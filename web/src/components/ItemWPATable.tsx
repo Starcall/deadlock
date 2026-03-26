@@ -67,6 +67,7 @@ export default function ItemWPATable({ results, itemMap }: Props) {
             >
               ΔW̄ (%){arrow("delta_w")}
             </th>
+            <th className="py-2 px-3">95% CI</th>
             <th
               className="py-2 px-3 cursor-pointer hover:text-[var(--foreground)]"
               onClick={() => handleSort("initial_w")}
@@ -132,6 +133,9 @@ export default function ItemWPATable({ results, itemMap }: Props) {
                 </td>
                 <td className={`py-2 px-3 font-mono font-bold ${deltaClass}`}>
                   {(r.mean_delta_w * 100).toFixed(2)}%
+                </td>
+                <td className="py-2 px-3 font-mono text-xs text-[var(--muted)]">
+                  [{(r.ci95_lower * 100).toFixed(2)}, {(r.ci95_upper * 100).toFixed(2)}]
                 </td>
                 <td className={`py-2 px-3 font-mono ${biasClass}`}>
                   {(r.mean_initial_w * 100).toFixed(1)}%
