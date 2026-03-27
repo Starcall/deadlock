@@ -27,6 +27,8 @@ func NewServer(db *store.DB, frontendURL string) *Server {
 	s.mux.Handle("GET /api/wpa/hero/{heroId}", cors(http.HandlerFunc(s.handleGetHeroWPA)))
 	s.mux.Handle("GET /api/wpa/hero/{heroId}/item/{itemId}", cors(http.HandlerFunc(s.handleGetHeroItemWPA)))
 	s.mux.Handle("GET /api/wpa/contexts", cors(http.HandlerFunc(s.handleGetContexts)))
+	s.mux.Handle("GET /api/builds/hero/{heroId}", cors(http.HandlerFunc(s.handleGetHeroBuilds)))
+	s.mux.Handle("GET /api/builds/coverage", cors(http.HandlerFunc(s.handleGetBuildCoverage)))
 	s.mux.Handle("GET /api/model/stats", cors(http.HandlerFunc(s.handleGetModelStats)))
 	s.mux.Handle("GET /api/model/reliability", cors(http.HandlerFunc(s.handleGetReliability)))
 	s.mux.Handle("GET /api/status", cors(http.HandlerFunc(s.handleGetStatus)))

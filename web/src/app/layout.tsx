@@ -45,6 +45,12 @@ export default function RootLayout({
               Heroes
             </Link>
             <Link
+              href="/builds"
+              className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
+            >
+              Builds
+            </Link>
+            <Link
               href="/about"
               className="text-sm text-[var(--muted)] hover:text-[var(--foreground)]"
             >

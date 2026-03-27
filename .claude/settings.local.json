@@ -26,7 +26,8 @@
       "Bash(node:*)",
       "Bash(chmod:*)",
       "Bash(go vet:*)",
-      "Bash(sqlite3:*)"
+      "Bash(sqlite3:*)",
+      "Bash(xargs basename:*)"
     ]
   }
 }

@@ -1,4 +1,4 @@
-import { Hero, Item, WPAResult, ModelStats, StatusInfo } from "./types";
+import { Hero, Item, WPAResult, ModelStats, StatusInfo, HeroBuildData, BuildCoverageEntry } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
@@ -42,4 +42,12 @@ export async function getModelStats(): Promise<ModelStats> {
 
 export async function getStatus(): Promise<StatusInfo> {
   return fetchJSON<StatusInfo>("/api/status");
+}
+
+export async function getHeroBuilds(heroId: number): Promise<HeroBuildData> {
+  return fetchJSON<HeroBuildData>(`/api/builds/hero/${heroId}`);
+}
+
+export async function getBuildCoverage(): Promise<BuildCoverageEntry[]> {
+  return fetchJSON<BuildCoverageEntry[]>("/api/builds/coverage");
 }

@@ -43,3 +43,27 @@ export interface StatusInfo {
   latest_match?: string;
   model_accuracy: number;
 }
+
+export interface BuildTemplate {
+  build_rank: number;
+  item_ids: number[];
+  exact_count: number;
+  fuzzy_count: number;
+  wins: number;
+  losses: number;
+  win_rate: number;
+}
+
+export interface HeroBuildData {
+  hero_id: number;
+  total_players: number;
+  coverage: number;
+  builds: BuildTemplate[];
+}
+
+export interface BuildCoverageEntry {
+  hero_id: number;
+  total_players: number;
+  classified_count: number;
+  coverage: number;
+}

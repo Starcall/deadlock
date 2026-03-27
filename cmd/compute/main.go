@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/name/deadlock/internal/builds"
 	"github.com/name/deadlock/internal/domain"
 	"github.com/name/deadlock/internal/model"
 	"github.com/name/deadlock/internal/store"
@@ -101,6 +102,7 @@ func main() {
 
 	contexts := wpa.AllContexts()
 	var allEvents []wpa.PurchaseEvent
+	var allBuilds []builds.PlayerBuild
 
 	for i, matchID := range matchIDs {
 		match, err := db.GetMatch(ctx, matchID)
@@ -130,6 +132,14 @@ func main() {
 		events := wpa.ComputeMatchWPA(result.Model, match, players, items, snaps)
 		allEvents = append(allEvents, events...)
 
+		// Collect final builds for build win rate analysis
+		for _, p := range players {
+			pb := builds.CollectPlayerBuild(p.HeroID, p.Team, match.WinningTeam, allMatchItems, p.PlayerSlot, shopItemIDs)
+			if pb != nil {
+				allBuilds = append(allBuilds, *pb)
+			}
+		}
+
 		if (i+1)%500 == 0 {
 			log.Printf("  Processed %d/%d matches (%d events)", i+1, len(matchIDs), len(allEvents))
 		}
@@ -147,6 +157,40 @@ func main() {
 	}
 
 	log.Println("=== WPA Computation Complete ===")
+
+	// Step 3: Compute Build Win Rates
+	log.Println("=== Computing Build Win Rates ===")
+	log.Printf("Collected %d player builds across %d heroes", len(allBuilds), countUniqueHeroes(allBuilds))
+
+	if err := db.ClearBuildResults(ctx); err != nil {
+		log.Fatalf("Failed to clear build results: %v", err)
+	}
+
+	templates, coverages := builds.ComputeBuildWinRates(allBuilds)
+	log.Printf("Generated %d build templates for %d heroes", len(templates), len(coverages))
+
+	if err := db.BulkInsertBuildTemplates(ctx, templates); err != nil {
+		log.Fatalf("Failed to store build templates: %v", err)
+	}
+	if err := db.BulkInsertBuildCoverage(ctx, coverages); err != nil {
+		log.Fatalf("Failed to store build coverage: %v", err)
+	}
+
+	for _, c := range coverages {
+		if c.TotalPlayers >= 50 {
+			log.Printf("  Hero %d: coverage=%.1f%% (%d/%d classified)", c.HeroID, c.Coverage*100, c.ClassifiedCount, c.TotalPlayers)
+		}
+	}
+
+	log.Println("=== Build Computation Complete ===")
+}
+
+func countUniqueHeroes(builds []builds.PlayerBuild) int {
+	seen := make(map[int]bool)
+	for _, b := range builds {
+		seen[b.HeroID] = true
+	}
+	return len(seen)
 }
 
 func envOr(key, fallback string) string {

@@ -145,6 +145,26 @@ func (db *DB) migrate() error {
 			is_active INTEGER NOT NULL DEFAULT 1
 		)`,
 
+		`CREATE TABLE IF NOT EXISTS build_templates (
+			hero_id INTEGER NOT NULL,
+			build_rank INTEGER NOT NULL,
+			item_ids TEXT NOT NULL,
+			exact_count INTEGER NOT NULL,
+			fuzzy_count INTEGER NOT NULL,
+			wins INTEGER NOT NULL,
+			losses INTEGER NOT NULL,
+			win_rate REAL NOT NULL,
+			total_hero_players INTEGER NOT NULL,
+			PRIMARY KEY (hero_id, build_rank)
+		)`,
+
+		`CREATE TABLE IF NOT EXISTS build_coverage (
+			hero_id INTEGER PRIMARY KEY,
+			total_players INTEGER NOT NULL,
+			classified_count INTEGER NOT NULL,
+			coverage REAL NOT NULL
+		)`,
+
 		// Indexes for common queries
 		`CREATE INDEX IF NOT EXISTS idx_match_players_hero ON match_players(hero_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_match_players_match ON match_players(match_id)`,
