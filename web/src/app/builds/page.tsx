@@ -41,10 +41,48 @@ export default function BuildsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-2">Build Win Rates</h1>
-      <p className="text-[var(--muted)] mb-6 max-w-2xl">
-        End-game item builds per hero, clustered by item similarity.
-        Coverage shows what percentage of games fall into a sufficiently large cluster.
-      </p>
+      <div className="mb-6 max-w-2xl space-y-3 text-sm text-[var(--muted)]">
+        <p>
+          End-game item builds per hero, discovered automatically using K-means clustering.
+        </p>
+        <details className="cursor-pointer">
+          <summary className="text-[var(--foreground)] font-medium hover:text-[var(--accent)]">
+            How it works
+          </summary>
+          <div className="mt-2 space-y-2 pl-2 border-l-2 border-[var(--card-border)]">
+            <p>
+              For each hero, we collect every player&apos;s final item set (items not sold by end of game)
+              across all matches in the current patch window.
+            </p>
+            <p>
+              Each player&apos;s build is converted into a binary vector &mdash; 1 if they have a given item, 0 otherwise.
+              We then run <strong className="text-[var(--foreground)]">K-means clustering</strong> on these vectors
+              to group players with similar item choices together.
+            </p>
+            <p>
+              The number of clusters (3&ndash;12) is chosen automatically using the{" "}
+              <strong className="text-[var(--foreground)]">silhouette score</strong>, which measures
+              how well each player fits their assigned cluster vs. the next closest one. A higher score
+              means more distinct, well-separated build archetypes.
+            </p>
+            <p>
+              Each cluster&apos;s <strong className="text-[var(--foreground)]">template</strong> is the set
+              of items that appear in at least 30% of that cluster&apos;s players (up to 8 items).
+              These are the core items that define the build.
+            </p>
+            <p>
+              <strong className="text-[var(--foreground)]">Win rate</strong> is computed from all players
+              assigned to the cluster, not just those with an exact item match.
+              Clusters with fewer than 30 games are excluded.
+            </p>
+            <p>
+              <strong className="text-[var(--foreground)]">Coverage</strong> shows what percentage of games
+              fall into a cluster large enough to report. Since every player is assigned to exactly one cluster,
+              coverage is typically high (80&ndash;100%).
+            </p>
+          </div>
+        </details>
+      </div>
       <input
         type="text"
         placeholder="Search heroes..."
