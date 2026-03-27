@@ -27,6 +27,7 @@ services:
     restart: unless-stopped
 
   # Ingests 1000 matches + recomputes WPA every 15 minutes
+  # Builds recompute on startup and once daily at 3:00 AM
   cron:
     build:
       context: .
@@ -35,19 +36,30 @@ services:
       - db-data:/data
     environment:
       - DB_PATH=/data/deadlock.db
+      - BUILDS_HOUR=3
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         echo "Starting initial ingest..."
         /bin/ingest --db /data/deadlock.db --count 1000 --patch-days 14
+        echo "Running full compute (with builds)..."
         /bin/compute --db /data/deadlock.db --patch-days 14
         echo "Initial run complete. Starting cron loop..."
+        LAST_BUILDS_DAY=""
         while true; do
           sleep 900
           echo "$(date) — Running ingest..."
           /bin/ingest --db /data/deadlock.db --count 1000 --patch-days 14
-          echo "$(date) — Running compute..."
-          /bin/compute --db /data/deadlock.db --patch-days 14
+          HOUR=$(date +%H)
+          TODAY=$(date +%Y-%m-%d)
+          if [ "$HOUR" = "$(printf '%02d' ${BUILDS_HOUR:-3})" ] && [ "$TODAY" != "$LAST_BUILDS_DAY" ]; then
+            echo "$(date) — Running compute WITH builds (nightly)..."
+            /bin/compute --db /data/deadlock.db --patch-days 14
+            LAST_BUILDS_DAY="$TODAY"
+          else
+            echo "$(date) — Running compute (skip builds)..."
+            /bin/compute --db /data/deadlock.db --patch-days 14 --skip-builds
+          fi
           echo "$(date) — Cycle complete."
         done
     restart: unless-stopped

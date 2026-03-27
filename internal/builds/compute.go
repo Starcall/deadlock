@@ -12,15 +12,16 @@ import (
 
 const (
 	MinFinalItems        = 4
-	MinK                 = 3
+	MinK                 = 1
 	MaxK                 = 12
-	MinSampleSize        = 30   // minimum games per cluster to include in results
-	MinHeroPlayers       = 90   // skip hero if fewer players (MinK * MinSampleSize)
-	KMeansRestarts       = 5    // random restarts per k
+	MinSampleSize        = 30    // minimum games per cluster to include in results
+	MinHeroPlayers       = 30    // skip hero if fewer players
+	MergeOverlap         = 0.75  // merge clusters whose templates share ≥75% items
+	KMeansRestarts       = 3    // random restarts per k
 	KMeansMaxIter        = 50   // max iterations per run
-	SilhouetteSampleSize = 2000 // max points for silhouette computation
+	SilhouetteSampleSize = 500 // max points for silhouette computation
 	CentroidThreshold    = 0.3  // item in template if ≥30% of cluster has it
-	MaxTemplateItems     = 8    // cap template size
+	MaxTemplateItems     = 12   // cap template size
 )
 
 // PlayerBuild holds a single player's final item set and match outcome.
@@ -331,18 +332,20 @@ func silhouetteScore(data [][]float64, assignments []int, k int, rng *rand.Rand)
 	return totalSil / float64(validCount)
 }
 
-// selectK tries k=MinK..MaxK and returns the k with best silhouette score.
+// selectK tries k=2..MaxK and returns the k with best silhouette score.
+// Returns 1 if no k≥2 produces a silhouette score above the minimum threshold.
 func selectK(data [][]float64, rng *rand.Rand) int {
-	bestK := MinK
-	bestScore := -1.0
+	const minSilhouette = 0.05 // minimum score to justify splitting
+
+	bestK := 1 // default: single cluster
+	bestScore := minSilhouette
 	declineCount := 0
 
-	for k := MinK; k <= MaxK; k++ {
+	for k := 2; k <= MaxK; k++ {
 		if k > len(data) {
 			break
 		}
-		centroids, assignments := kmeansMultiRestart(data, k, KMeansRestarts, rng)
-		_ = centroids
+		_, assignments := kmeansMultiRestart(data, k, KMeansRestarts, rng)
 		score := silhouetteScore(data, assignments, k, rng)
 
 		if score > bestScore {
@@ -386,6 +389,88 @@ func templateFromCentroid(centroid []float64, allItems []int64) []int64 {
 	return result
 }
 
+type rankedBuild struct {
+	template domain.BuildTemplate
+	items    []int64 // parsed template items for overlap comparison
+	count    int
+}
+
+// parseItemIDs splits a comma-separated string of item IDs into []int64.
+func parseItemIDs(s string) []int64 {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	result := make([]int64, 0, len(parts))
+	for _, p := range parts {
+		var id int64
+		fmt.Sscanf(p, "%d", &id)
+		result = append(result, id)
+	}
+	return result
+}
+
+// mergeOverlappingBuilds merges clusters whose templates have Jaccard overlap ≥ MergeOverlap.
+// The larger cluster absorbs the smaller one; the larger's template is kept.
+func mergeOverlappingBuilds(builds []rankedBuild) []rankedBuild {
+	if len(builds) <= 1 {
+		return builds
+	}
+
+	merged := make([]bool, len(builds))
+	for i := 0; i < len(builds); i++ {
+		if merged[i] {
+			continue
+		}
+		for j := i + 1; j < len(builds); j++ {
+			if merged[j] {
+				continue
+			}
+			if templateJaccard(builds[i].items, builds[j].items) >= MergeOverlap {
+				// Absorb j into i
+				builds[i].template.FuzzyCount += builds[j].template.FuzzyCount
+				builds[i].template.ExactCount += builds[j].template.ExactCount
+				builds[i].template.Wins += builds[j].template.Wins
+				builds[i].template.Losses += builds[j].template.Losses
+				builds[i].count += builds[j].count
+				if builds[i].template.FuzzyCount > 0 {
+					builds[i].template.WinRate = float64(builds[i].template.Wins) / float64(builds[i].template.FuzzyCount)
+				}
+				merged[j] = true
+			}
+		}
+	}
+
+	var result []rankedBuild
+	for i, b := range builds {
+		if !merged[i] {
+			result = append(result, b)
+		}
+	}
+	return result
+}
+
+// templateJaccard computes |A ∩ B| / |A ∪ B| for two sorted item slices.
+func templateJaccard(a, b []int64) float64 {
+	setA := make(map[int64]bool, len(a))
+	for _, id := range a {
+		setA[id] = true
+	}
+	intersection := 0
+	union := len(a)
+	for _, id := range b {
+		if setA[id] {
+			intersection++
+		} else {
+			union++
+		}
+	}
+	if union == 0 {
+		return 0
+	}
+	return float64(intersection) / float64(union)
+}
+
 // ComputeBuildWinRates clusters player builds per hero using K-means and returns templates + coverage.
 func ComputeBuildWinRates(allBuilds []PlayerBuild) ([]domain.BuildTemplate, []domain.HeroBuildCoverage) {
 	// Group builds by hero
@@ -421,7 +506,27 @@ func ComputeBuildWinRates(allBuilds []PlayerBuild) ([]domain.BuildTemplate, []do
 		k := selectK(data, rng)
 
 		// Final clustering with best k
-		centroids, assignments := kmeansMultiRestart(data, k, KMeansRestarts, rng)
+		var centroids [][]float64
+		var assignments []int
+		if k == 1 {
+			// Single cluster: centroid = mean of all points
+			dims := len(data[0])
+			centroid := make([]float64, dims)
+			for _, row := range data {
+				for d := 0; d < dims; d++ {
+					centroid[d] += row[d]
+				}
+			}
+			n := float64(len(data))
+			for d := range centroid {
+				centroid[d] /= n
+			}
+			centroids = [][]float64{centroid}
+			assignments = make([]int, len(data))
+			// all zeros by default
+		} else {
+			centroids, assignments = kmeansMultiRestart(data, k, KMeansRestarts, rng)
+		}
 
 		// Compute stats per cluster
 		type clusterStats struct {
@@ -438,10 +543,6 @@ func ComputeBuildWinRates(allBuilds []PlayerBuild) ([]domain.BuildTemplate, []do
 		}
 
 		// Extract templates and filter small clusters
-		type rankedBuild struct {
-			template domain.BuildTemplate
-			count    int
-		}
 		var ranked []rankedBuild
 
 		classifiedCount := 0
@@ -495,9 +596,13 @@ func ComputeBuildWinRates(allBuilds []PlayerBuild) ([]domain.BuildTemplate, []do
 					WinRate:          winRate,
 					TotalHeroPlayers: totalPlayers,
 				},
+				items: templateItems,
 				count: stats[c].total,
 			})
 		}
+
+		// Merge clusters with highly overlapping templates
+		ranked = mergeOverlappingBuilds(ranked)
 
 		// Sort by popularity, assign ranks
 		sort.Slice(ranked, func(i, j int) bool { return ranked[i].count > ranked[j].count })

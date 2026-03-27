@@ -22,6 +22,7 @@ func main() {
 	lr := flag.Float64("lr", 0.01, "Learning rate")
 	epochs := flag.Int("epochs", 1000, "Training epochs")
 	patchDays := flag.Int("patch-days", 14, "Only compute WPA from matches in the last N days")
+	skipBuilds := flag.Bool("skip-builds", false, "Skip build win rate computation (expensive)")
 	flag.Parse()
 
 	ctx := context.Background()
@@ -133,10 +134,12 @@ func main() {
 		allEvents = append(allEvents, events...)
 
 		// Collect final builds for build win rate analysis
-		for _, p := range players {
-			pb := builds.CollectPlayerBuild(p.HeroID, p.Team, match.WinningTeam, allMatchItems, p.PlayerSlot, shopItemIDs)
-			if pb != nil {
-				allBuilds = append(allBuilds, *pb)
+		if !*skipBuilds {
+			for _, p := range players {
+				pb := builds.CollectPlayerBuild(p.HeroID, p.Team, match.WinningTeam, allMatchItems, p.PlayerSlot, shopItemIDs)
+				if pb != nil {
+					allBuilds = append(allBuilds, *pb)
+				}
 			}
 		}
 
@@ -158,31 +161,35 @@ func main() {
 
 	log.Println("=== WPA Computation Complete ===")
 
-	// Step 3: Compute Build Win Rates
-	log.Println("=== Computing Build Win Rates ===")
-	log.Printf("Collected %d player builds across %d heroes", len(allBuilds), countUniqueHeroes(allBuilds))
+	// Step 3: Compute Build Win Rates (skippable — expensive)
+	if *skipBuilds {
+		log.Println("=== Skipping Build Win Rates (--skip-builds) ===")
+	} else {
+		log.Println("=== Computing Build Win Rates ===")
+		log.Printf("Collected %d player builds across %d heroes", len(allBuilds), countUniqueHeroes(allBuilds))
 
-	if err := db.ClearBuildResults(ctx); err != nil {
-		log.Fatalf("Failed to clear build results: %v", err)
-	}
-
-	templates, coverages := builds.ComputeBuildWinRates(allBuilds)
-	log.Printf("Generated %d build templates for %d heroes", len(templates), len(coverages))
-
-	if err := db.BulkInsertBuildTemplates(ctx, templates); err != nil {
-		log.Fatalf("Failed to store build templates: %v", err)
-	}
-	if err := db.BulkInsertBuildCoverage(ctx, coverages); err != nil {
-		log.Fatalf("Failed to store build coverage: %v", err)
-	}
-
-	for _, c := range coverages {
-		if c.TotalPlayers >= 50 {
-			log.Printf("  Hero %d: coverage=%.1f%% (%d/%d classified)", c.HeroID, c.Coverage*100, c.ClassifiedCount, c.TotalPlayers)
+		if err := db.ClearBuildResults(ctx); err != nil {
+			log.Fatalf("Failed to clear build results: %v", err)
 		}
-	}
 
-	log.Println("=== Build Computation Complete ===")
+		templates, coverages := builds.ComputeBuildWinRates(allBuilds)
+		log.Printf("Generated %d build templates for %d heroes", len(templates), len(coverages))
+
+		if err := db.BulkInsertBuildTemplates(ctx, templates); err != nil {
+			log.Fatalf("Failed to store build templates: %v", err)
+		}
+		if err := db.BulkInsertBuildCoverage(ctx, coverages); err != nil {
+			log.Fatalf("Failed to store build coverage: %v", err)
+		}
+
+		for _, c := range coverages {
+			if c.TotalPlayers >= 50 {
+				log.Printf("  Hero %d: coverage=%.1f%% (%d/%d classified)", c.HeroID, c.Coverage*100, c.ClassifiedCount, c.TotalPlayers)
+			}
+		}
+
+		log.Println("=== Build Computation Complete ===")
+	}
 }
 
 func countUniqueHeroes(builds []builds.PlayerBuild) int {
