@@ -12,6 +12,7 @@ const (
 	TopN             = 10
 	OverlapThreshold = 0.80
 	MinFinalItems    = 4
+	CoreItemCount    = 6
 )
 
 // PlayerBuild holds a single player's final item set and match outcome.
@@ -60,9 +61,10 @@ func itemSetKey(items []int64) string {
 	return strings.Join(parts, ",")
 }
 
-// overlap computes |intersection(player, template)| / |template|.
+// overlap computes |intersection(player, template)| / |player items|.
+// A player with 5 items where all 5 match the template scores 100%.
 func overlap(playerItems, templateItems []int64) float64 {
-	if len(templateItems) == 0 {
+	if len(playerItems) == 0 {
 		return 0
 	}
 	templateSet := make(map[int64]bool, len(templateItems))
@@ -75,13 +77,45 @@ func overlap(playerItems, templateItems []int64) float64 {
 			count++
 		}
 	}
-	return float64(count) / float64(len(templateItems))
+	return float64(count) / float64(len(playerItems))
 }
 
 type buildFreq struct {
 	key     string
 	items   []int64
 	count   int
+}
+
+// extractCoreItems finds the CoreItemCount most frequent items across all cluster variants.
+func extractCoreItems(variants []*buildFreq) []int64 {
+	itemFreq := make(map[int64]int)
+	for _, v := range variants {
+		for _, id := range v.items {
+			itemFreq[id] += v.count
+		}
+	}
+
+	type itemCount struct {
+		id    int64
+		count int
+	}
+	items := make([]itemCount, 0, len(itemFreq))
+	for id, c := range itemFreq {
+		items = append(items, itemCount{id, c})
+	}
+	sort.Slice(items, func(i, j int) bool { return items[i].count > items[j].count })
+
+	n := CoreItemCount
+	if n > len(items) {
+		n = len(items)
+	}
+
+	result := make([]int64, n)
+	for i := 0; i < n; i++ {
+		result[i] = items[i].id
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i] < result[j] })
+	return result
 }
 
 // ComputeBuildWinRates computes top builds, classifies players, and returns templates + coverage.
@@ -109,14 +143,64 @@ func ComputeBuildWinRates(allBuilds []PlayerBuild) ([]domain.BuildTemplate, []do
 			}
 		}
 
-		// Sort by frequency descending, take top N
+		// Sort by frequency descending
 		freqs := make([]*buildFreq, 0, len(freqMap))
 		for _, f := range freqMap {
 			freqs = append(freqs, f)
 		}
 		sort.Slice(freqs, func(i, j int) bool { return freqs[i].count > freqs[j].count })
-		if len(freqs) > TopN {
-			freqs = freqs[:TopN]
+
+		// Cluster similar builds: greedy merge by overlap threshold.
+		// The most frequent variant becomes the cluster representative.
+		// After clustering, extract the top CoreItemCount items as the template.
+		type cluster struct {
+			representative *buildFreq
+			totalCount     int
+			memberKeys     map[string]bool
+			allBuilds      []*buildFreq // all variants, for computing core items
+		}
+		var clusters []*cluster
+		for _, f := range freqs {
+			merged := false
+			for _, c := range clusters {
+				// Use Jaccard-like check on core items
+				ovAB := overlap(f.items, c.representative.items)
+				ovBA := overlap(c.representative.items, f.items)
+				if ovAB >= OverlapThreshold && ovBA >= OverlapThreshold {
+					c.totalCount += f.count
+					c.memberKeys[f.key] = true
+					c.allBuilds = append(c.allBuilds, f)
+					merged = true
+					break
+				}
+			}
+			if !merged {
+				clusters = append(clusters, &cluster{
+					representative: f,
+					totalCount:     f.count,
+					memberKeys:     map[string]bool{f.key: true},
+					allBuilds:      []*buildFreq{f},
+				})
+			}
+		}
+
+		// Sort clusters by total count, take top N
+		sort.Slice(clusters, func(i, j int) bool { return clusters[i].totalCount > clusters[j].totalCount })
+		if len(clusters) > TopN {
+			clusters = clusters[:TopN]
+		}
+
+		// For each cluster, find the CoreItemCount most common items as the template.
+		freqs = make([]*buildFreq, len(clusters))
+		clusterMembers := make([]map[string]bool, len(clusters))
+		for i, c := range clusters {
+			coreItems := extractCoreItems(c.allBuilds)
+			freqs[i] = &buildFreq{
+				key:   itemSetKey(coreItems),
+				items: coreItems,
+				count: c.totalCount,
+			}
+			clusterMembers[i] = c.memberKeys
 		}
 
 		// Classify each player against templates
@@ -135,8 +219,8 @@ func ComputeBuildWinRates(allBuilds []PlayerBuild) ([]domain.BuildTemplate, []do
 			bestOverlap := 0.0
 
 			for ti, tmpl := range freqs {
-				if playerKey == tmpl.key {
-					// Exact match
+				// Check if exact match to any variant in the cluster
+				if clusterMembers[ti][playerKey] {
 					bestIdx = ti
 					bestOverlap = 1.0
 					break
@@ -150,7 +234,7 @@ func ComputeBuildWinRates(allBuilds []PlayerBuild) ([]domain.BuildTemplate, []do
 
 			if bestIdx >= 0 {
 				classifiedCount++
-				if playerKey == freqs[bestIdx].key {
+				if clusterMembers[bestIdx][playerKey] {
 					stats[bestIdx].exactCount++
 				}
 				stats[bestIdx].fuzzyTotal++
