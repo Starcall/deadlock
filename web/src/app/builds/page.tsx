@@ -42,8 +42,8 @@ export default function BuildsPage() {
     <div>
       <h1 className="text-2xl font-bold mb-2">Build Win Rates</h1>
       <p className="text-[var(--muted)] mb-6 max-w-2xl">
-        Top 10 most common end-game item builds per hero, classified using 80% item overlap.
-        Coverage shows what percentage of games match a known build template.
+        End-game item builds per hero, clustered by item similarity.
+        Coverage shows what percentage of games fall into a sufficiently large cluster.
       </p>
       <input
         type="text"
